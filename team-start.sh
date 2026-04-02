@@ -27,6 +27,19 @@ MASTER_SESSION="$SESSION_BASE"
 EXECUTOR_SESSION="${SESSION_BASE}-executor"
 VALIDATOR_SESSION="${SESSION_BASE}-validator"
 
+# Check for --pane-mode flag (used in --show-all where agents are panes, not sessions)
+PANE_MODE=false
+for arg in "$@"; do
+  if [[ "$arg" == "--pane-mode" ]]; then
+    PANE_MODE=true
+    # In pane mode, agents are panes in the same tmux session
+    MASTER_SESSION="${SESSION_BASE}:0.0"
+    EXECUTOR_SESSION="${SESSION_BASE}:0.1"
+    VALIDATOR_SESSION="${SESSION_BASE}:0.2"
+    break
+  fi
+done
+
 # --- Detect VCS and select common prompt ---
 VCS_PROMPT=""
 if [[ -d "$WORKTREE_PATH/.sl" ]]; then

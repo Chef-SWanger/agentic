@@ -132,8 +132,8 @@ if [[ "$SHOW_ALL" == true ]]; then
   # --- 4-pane layout: Master | Executor | Validator | Terminal ---
   # All agents run directly in panes (no background sessions, no nesting).
 
-  # Get launcher scripts for all 3 roles
-  mapfile -t LAUNCHERS < <("$AGENTIC_DIR/team-start.sh" "$SESSION" "$DIR" --launchers-only)
+  # Get launcher scripts for all 3 roles (--pane-mode so agents target panes, not sessions)
+  mapfile -t LAUNCHERS < <("$AGENTIC_DIR/team-start.sh" "$SESSION" "$DIR" --launchers-only --pane-mode)
   MASTER_LAUNCHER="${LAUNCHERS[0]}"
   EXECUTOR_LAUNCHER="${LAUNCHERS[1]}"
   VALIDATOR_LAUNCHER="${LAUNCHERS[2]}"
