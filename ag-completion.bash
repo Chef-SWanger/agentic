@@ -1,7 +1,7 @@
 #!/bin/bash
-# Bash completion for gwt (worktree manager)
+# Bash completion for ag (agentic workflow manager)
 
-_gwt_completions() {
+_ag_completions() {
   local cur prev subcmd
   cur="${COMP_WORDS[COMP_CWORD]}"
   prev="${COMP_WORDS[COMP_CWORD-1]}"
@@ -30,11 +30,11 @@ _gwt_completions() {
       else
         # Complete with existing worktree names
         local names
-        names="$(_gwt_get_worktree_names 2>/dev/null)"
+        names="$(_ag_get_worktree_names 2>/dev/null)"
         COMPREPLY=($(compgen -W "$names" -- "$cur"))
       fi
       ;;
   esac
 }
 
-complete -F _gwt_completions gwt
+complete -F _ag_completions ag

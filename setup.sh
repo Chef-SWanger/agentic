@@ -11,7 +11,7 @@ mkdir -p "$BIN_DIR"
 
 # Symlink CLI commands
 ln -sf "$AGENTIC_DIR/tinit.sh" "$BIN_DIR/tinit"
-ln -sf "$AGENTIC_DIR/master-claude/master-claude.sh" "$BIN_DIR/master-claude"
+# ln -sf "$AGENTIC_DIR/master-claude/master-claude.sh" "$BIN_DIR/master-claude"
 
 # Add ~/bin to PATH if not already there
 if ! echo "$PATH" | tr ':' '\n' | grep -qx "$BIN_DIR"; then
@@ -21,13 +21,13 @@ if ! echo "$PATH" | tr ':' '\n' | grep -qx "$BIN_DIR"; then
   echo "Added ~/bin to PATH in $(basename "$SHELL_RC")"
 fi
 
-# Source gwt.sh if not already sourced
+# Source ag.sh if not already sourced
 SHELL_RC="$HOME/.bashrc"
 [[ "$(basename "$SHELL")" == "zsh" ]] && SHELL_RC="$HOME/.zshrc"
-if ! grep -qF "source $AGENTIC_DIR/gwt.sh" "$SHELL_RC" 2>/dev/null && \
-   ! grep -qF "source ~/agentic/gwt.sh" "$SHELL_RC" 2>/dev/null; then
-  echo "source $AGENTIC_DIR/gwt.sh" >> "$SHELL_RC"
-  echo "Added gwt.sh to $(basename "$SHELL_RC")"
+if ! grep -qF "source $AGENTIC_DIR/ag.sh" "$SHELL_RC" 2>/dev/null && \
+   ! grep -qF "source ~/agentic/ag.sh" "$SHELL_RC" 2>/dev/null; then
+  echo "source $AGENTIC_DIR/ag.sh" >> "$SHELL_RC"
+  echo "Added ag.sh to $(basename "$SHELL_RC")"
 fi
 
 # Optionally add aliases (--aliases flag)
@@ -54,5 +54,5 @@ for alias_line in "${ALIASES[@]}"; do
 done
 fi
 
-echo "Setup complete. Available commands: tinit, gwt, master-claude"
+echo "Setup complete. Available commands: tinit, ag"
 echo "Run 'source $SHELL_RC' or start a new shell to activate."

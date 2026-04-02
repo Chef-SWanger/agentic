@@ -1,7 +1,7 @@
 #!/bin/bash
 # Stops team agents (Executor and Validator) for a given session base name.
 # Optionally cleans up .agent-comms/ and ignore file entries in the worktree.
-# Called during gwt rm to clean up agent sessions.
+# Called during ag rm to clean up agent sessions.
 #
 # Usage: team-stop.sh <session-base> [worktree-path]
 #   session-base  - base name used when starting the team (e.g. "myrepo-feature")
