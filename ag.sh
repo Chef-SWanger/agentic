@@ -247,7 +247,14 @@ _ag_rm() {
     return 1
   fi
 
-  _ag_repo_info || return 1
+  # Try to get repo info from current directory. If that fails, try to
+  # discover the repo from the worktree name by finding a matching directory.
+  if ! _ag_repo_info 2>/dev/null; then
+    _ag_rm_anywhere "$force" "${patterns[@]}"
+    return $?
+  fi
+
+  # --- Inside a git repo: use standard worktree list approach ---
 
   # Collect matching worktree names
   local all_names
@@ -299,63 +306,154 @@ _ag_rm() {
 
   # Remove
   for name in "${to_remove[@]}"; do
-    local wt_path="${REPO_PARENT}/${REPO_NAME}-${name}"
-    local branch="${WT_BRANCH_PREFIX}/${name}"
-    local session_name="${REPO_NAME}-${name}"
-
-    # Kill team agent sessions
-    "$AGENTIC_DIR/team-stop.sh" "$session_name" "$wt_path" || true
-
-    # Clean up .agent-comms artifacts that prevent worktree removal
-    if [[ -d "$wt_path/.agent-comms" ]]; then
-      rm -rf "$wt_path/.agent-comms"
-    fi
-    # Remove the .agent-comms/ line we appended to ignore files
-    if [[ -f "$wt_path/.gitignore" ]]; then
-      sed -i '/^\.agent-comms\/$/d' "$wt_path/.gitignore"
-    fi
-    if [[ -f "$wt_path/.hgignore" ]]; then
-      sed -i '/^\.agent-comms\/$/d' "$wt_path/.hgignore"
-    fi
-
-    # Kill tmux session if it exists
-    if tmux has-session -t "$session_name" 2>/dev/null; then
-      tmux kill-session -t "$session_name"
-      echo "Killed tmux session: $session_name"
-    fi
-
-    # If we're currently inside the worktree being removed, cd out first
-    if [[ "$(pwd)" == "$wt_path" || "$(pwd)" == "$wt_path/"* ]]; then
-      cd "$REPO_ROOT" || true
-      echo "Changed directory back to $REPO_ROOT"
-    fi
-
-    # Remove worktree
-    if [[ "$force" == true ]]; then
-      git worktree remove --force "$wt_path" 2>/dev/null || {
-        echo "ag: failed to remove worktree '$name'"
-        continue
-      }
-    else
-      git worktree remove "$wt_path" 2>/dev/null || {
-        echo "ag: failed to remove worktree '$name' (use --force to override)"
-        continue
-      }
-    fi
-
-    # Delete branch
-    if git show-ref --verify --quiet "refs/heads/${branch}" 2>/dev/null; then
-      if [[ "$force" == true ]]; then
-        git branch -D "$branch" 2>/dev/null || true
-      else
-        git branch -d "$branch" 2>/dev/null || {
-          echo "ag: branch '$branch' has unmerged changes (use --force to delete)"
-        }
-      fi
-    fi
-
-    echo "Removed: ${REPO_NAME}-${name}"
+    _ag_rm_worktree "$name" "${REPO_PARENT}/${REPO_NAME}-${name}" \
+      "${WT_BRANCH_PREFIX}/${name}" "${REPO_NAME}-${name}" "$force"
   done
+}
+
+# Remove a worktree when called from outside any git repo.
+# Discovers worktrees by finding directories that match *-<pattern>.
+_ag_rm_anywhere() {
+  local force="$1"
+  shift
+  local patterns=("$@")
+  local to_remove=()  # each entry: "wt_path|name|session_name"
+
+  for pattern in "${patterns[@]}"; do
+    local matched=false
+    # Search for directories matching *-<pattern> by checking git worktree list
+    # from any matching directory we find
+    for candidate in *-${pattern} ../*-${pattern} ~/*-${pattern}; do
+      # Expand the glob
+      if [[ -d "$candidate" ]]; then
+        local abs_path
+        abs_path="$(cd "$candidate" && pwd)"
+        # Verify it's actually a git worktree
+        if git -C "$abs_path" rev-parse --show-toplevel &>/dev/null; then
+          local dir_name
+          dir_name="$(basename "$abs_path")"
+          local already=false
+          for existing in "${to_remove[@]:-}"; do
+            if [[ "$existing" == "$abs_path|"* ]]; then
+              already=true
+              break
+            fi
+          done
+          if [[ "$already" == false ]]; then
+            to_remove+=("$abs_path|$pattern|$dir_name")
+            matched=true
+          fi
+        fi
+      fi
+    done
+    if [[ "$matched" == false ]]; then
+      echo "ag rm: no worktree matching '$pattern' found nearby"
+    fi
+  done
+
+  if [[ ${#to_remove[@]} -eq 0 ]]; then
+    echo "Nothing to remove."
+    return 0
+  fi
+
+  # Confirm
+  echo "Will remove the following worktrees:"
+  for entry in "${to_remove[@]}"; do
+    local wt_path="${entry%%|*}"
+    echo "  $(basename "$wt_path")  ($wt_path)"
+  done
+  echo ""
+  read -r -p "Proceed? [y/N] " confirm
+  if [[ "$confirm" != [yY] && "$confirm" != [yY][eE][sS] ]]; then
+    echo "Aborted."
+    return 0
+  fi
+
+  for entry in "${to_remove[@]}"; do
+    local wt_path="${entry%%|*}"
+    local rest="${entry#*|}"
+    local name="${rest%%|*}"
+    local session_name="${rest#*|}"
+    local branch="${WT_BRANCH_PREFIX}/${name}"
+
+    _ag_rm_worktree "$name" "$wt_path" "$branch" "$session_name" "$force"
+  done
+}
+
+# Shared worktree removal logic used by both _ag_rm and _ag_rm_anywhere.
+_ag_rm_worktree() {
+  local name="$1"
+  local wt_path="$2"
+  local branch="$3"
+  local session_name="$4"
+  local force="$5"
+
+  # Kill team agent sessions
+  "$AGENTIC_DIR/team-stop.sh" "$session_name" "$wt_path" || true
+
+  # Clean up .agent-comms artifacts that prevent worktree removal
+  if [[ -d "$wt_path/.agent-comms" ]]; then
+    rm -rf "$wt_path/.agent-comms"
+  fi
+  # Remove the .agent-comms/ line we appended to ignore files
+  if [[ -f "$wt_path/.gitignore" ]]; then
+    sed -i '/^\.agent-comms\/$/d' "$wt_path/.gitignore"
+  fi
+  if [[ -f "$wt_path/.hgignore" ]]; then
+    sed -i '/^\.agent-comms\/$/d' "$wt_path/.hgignore"
+  fi
+
+  # Kill tmux session if it exists
+  if tmux has-session -t "$session_name" 2>/dev/null; then
+    tmux kill-session -t "$session_name"
+    echo "Killed tmux session: $session_name"
+  fi
+
+  # If we're currently inside the worktree being removed, cd out first
+  if [[ "$(pwd)" == "$wt_path" || "$(pwd)" == "$wt_path/"* ]]; then
+    cd "$(dirname "$wt_path")" || true
+    echo "Changed directory to $(dirname "$wt_path")"
+  fi
+
+  # Remove worktree
+  if [[ "$force" == true ]]; then
+    git -C "$wt_path" worktree remove --force "$wt_path" 2>/dev/null || \
+    git worktree remove --force "$wt_path" 2>/dev/null || {
+      echo "ag: failed to remove worktree '$name'"
+      return 1
+    }
+  else
+    git -C "$wt_path" worktree remove "$wt_path" 2>/dev/null || \
+    git worktree remove "$wt_path" 2>/dev/null || {
+      echo "ag: failed to remove worktree '$name' (use --force to override)"
+      return 1
+    }
+  fi
+
+  # Delete branch (need to run from the main repo, not the worktree)
+  local main_repo
+  main_repo="$(git -C "$wt_path" worktree list 2>/dev/null | head -1 | awk '{print $1}')" || true
+  if [[ -z "$main_repo" ]]; then
+    # Worktree already removed, try to find main repo from parent dir
+    for d in "$(dirname "$wt_path")"/*/; do
+      if git -C "$d" rev-parse --show-toplevel &>/dev/null 2>&1; then
+        main_repo="$(git -C "$d" rev-parse --show-toplevel 2>/dev/null)" || true
+        break
+      fi
+    done
+  fi
+
+  if [[ -n "$main_repo" ]] && git -C "$main_repo" show-ref --verify --quiet "refs/heads/${branch}" 2>/dev/null; then
+    if [[ "$force" == true ]]; then
+      git -C "$main_repo" branch -D "$branch" 2>/dev/null || true
+    else
+      git -C "$main_repo" branch -d "$branch" 2>/dev/null || {
+        echo "ag: branch '$branch' has unmerged changes (use --force to delete)"
+      }
+    fi
+  fi
+
+  echo "Removed: $(basename "$wt_path")"
 }
 
 # Source completion if interactive
