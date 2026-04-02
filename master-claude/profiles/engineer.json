@@ -1,0 +1,8 @@
+{
+  "enabledPlugins": {
+    "10x-engineer@claude-templates": true
+  },
+  "env": {
+    "CLAUDE_CODE_ENABLE_PROMPT_SUGGESTION": "false"
+  }
+}
