@@ -112,16 +112,30 @@ if [[ "$SHOW_ALL" == true ]]; then
   EXECUTOR_LAUNCHER="${LAUNCHERS[1]}"
   VALIDATOR_LAUNCHER="${LAUNCHERS[2]}"
 
-  # Create session with pane 0 (will be Master)
+  # Layout:
+  # +------------+------------+-----------+
+  # |            |            | VALIDATOR |
+  # |   MASTER   |  EXECUTOR  +-----------+
+  # |            |            | TERMINAL  |
+  # +------------+------------+-----------+
+
+  # Create session — pane 0 is Master (full height left)
   tmux new-session -d -s "$SESSION" -c "$DIR"
 
-  # Split into 4 equal vertical panes
-  tmux split-window -h -t "$SESSION" -c "$DIR"
-  tmux split-window -h -t "$SESSION:0.1" -c "$DIR"
-  tmux split-window -h -t "$SESSION:0.2" -c "$DIR"
+  # Split right: pane 1 (will become Executor column)
+  tmux split-window -h -t "$SESSION:0.0" -c "$DIR" -p 66
 
-  # Even out the layout
-  tmux select-layout -t "$SESSION" even-horizontal
+  # Split right column again: pane 2 (right-most column)
+  tmux split-window -h -t "$SESSION:0.1" -c "$DIR" -p 50
+
+  # Split the right-most column vertically: pane 3 (Terminal, bottom-right)
+  tmux split-window -v -t "$SESSION:0.2" -c "$DIR" -p 50
+
+  # Panes are now:
+  #   0 = Master (left, full height)
+  #   1 = Executor (middle, full height)
+  #   2 = Validator (top-right)
+  #   3 = Terminal (bottom-right)
 
   sleep 1
 
