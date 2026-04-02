@@ -72,11 +72,13 @@ rm "$TMP_FILE"
 
 ### Reading agent output (tmux)
 
+If you need to check an agent's current output:
 ```bash
 tmux capture-pane -t EXECUTOR_SESSION -p | tail -n 50
 ```
 
-Poll every 30-60 seconds to monitor progress.
+Do NOT poll periodically. The Executor will notify you when tasks are
+validated and complete. Wait for their message instead of polling.
 
 ### File-based communication
 
@@ -108,9 +110,9 @@ tmux send-keys -t EXECUTOR_SESSION Enter
    - Edge cases to check
 3. Send the validation plan to the Validator via tmux
 4. Send the task to the Executor via tmux
-5. Monitor Executor progress by polling with `capture-pane`
-6. When the Executor reports completion, the Validator will automatically validate
-7. If the Validator reports failure, the Executor will retry (up to 5 attempts)
+5. Wait for the Executor to notify you — do NOT poll. The Executor will
+   send you a tmux message when the task passes validation.
+6. If validation fails, the Executor will retry (up to 5 attempts)
 8. If 5 attempts fail, the Executor will escalate to you — diagnose and help
 
 ### Reporting to the user
