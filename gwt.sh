@@ -3,7 +3,7 @@
 # Source this file in .bashrc: source ~/agentic/gwt.sh
 #
 # Usage:
-#   gwt add <name> [name2 ...] [--no-cd] [--tmux]
+#   gwt add <name> [name2 ...] [--no-cd] [--tmux] [--team [--show-all]]
 #   gwt ls
 #   gwt rm <pattern> [pattern2 ...] [--force]
 
@@ -31,12 +31,15 @@ _gwt_usage() {
   cat <<'EOF'
 Usage:
   gwt add <name> [name2 ...] [--no-cd] [--tmux] [--prefix PREFIX] [--branch BRANCH]
+                             [--team [--show-all]]
   gwt ls                                           List worktrees
   gwt rm <pattern> [pattern2 ...] [--force]        Remove worktree(s)
 
 Options:
   --no-cd        (add) Don't cd into the worktree (single worktree only)
   --tmux         (add) Create tmux session(s) via tinit
+  --team         (add) Start a 3-agent team (Master, Executor, Validator)
+  --show-all     (add) Show all agent panes (requires --team)
   --prefix PFX   (add) Override branch prefix (default: $WT_BRANCH_PREFIX)
   --branch NAME  (add) Use exact branch name (single worktree only)
   --force        (rm)  Force remove even with uncommitted changes
@@ -58,19 +61,28 @@ _gwt_add() {
   local names=()
   local no_cd=false
   local use_tmux=false
+  local use_team=false
+  local show_all=false
   local prefix="$WT_BRANCH_PREFIX"
   local exact_branch=""
 
   while [[ $# -gt 0 ]]; do
     case "$1" in
-      --no-cd)   no_cd=true; shift ;;
-      -t|--tmux) use_tmux=true; shift ;;
-      --prefix)  prefix="$2"; shift 2 ;;
-      --branch)  exact_branch="$2"; shift 2 ;;
-      --*)       echo "gwt add: unknown flag '$1'"; return 1 ;;
-      *)         names+=("$1"); shift ;;
+      --no-cd)     no_cd=true; shift ;;
+      -t|--tmux)   use_tmux=true; shift ;;
+      --team)      use_team=true; use_tmux=true; shift ;;
+      --show-all)  show_all=true; shift ;;
+      --prefix)    prefix="$2"; shift 2 ;;
+      --branch)    exact_branch="$2"; shift 2 ;;
+      --*)         echo "gwt add: unknown flag '$1'"; return 1 ;;
+      *)           names+=("$1"); shift ;;
     esac
   done
+
+  if [[ "$show_all" == true && "$use_team" == false ]]; then
+    echo "gwt add: --show-all requires --team"
+    return 1
+  fi
 
   if [[ ${#names[@]} -eq 0 ]]; then
     echo "gwt add: at least one name is required"
@@ -127,7 +139,14 @@ _gwt_add() {
     local gwt_path="${REPO_PARENT}/${REPO_NAME}-${name}"
 
     if [[ "$use_tmux" == true ]]; then
-      "$AGENTIC_DIR/tinit.sh" "$gwt_path" --session "${REPO_NAME}-${name}"
+      local tinit_args=("$gwt_path" --session "${REPO_NAME}-${name}")
+      if [[ "$use_team" == true ]]; then
+        tinit_args+=(--team)
+        if [[ "$show_all" == true ]]; then
+          tinit_args+=(--show-all)
+        fi
+      fi
+      "$AGENTIC_DIR/tinit.sh" "${tinit_args[@]}"
     elif [[ "$no_cd" == false ]]; then
       cd "$gwt_path" || return 1
       echo "Changed directory to $gwt_path"
@@ -143,10 +162,18 @@ _gwt_add() {
       local gwt_path="${REPO_PARENT}/${REPO_NAME}-${name}"
       local session_name="${REPO_NAME}-${name}"
 
+      local tinit_args=("$gwt_path" --session "$session_name")
+      if [[ "$use_team" == true ]]; then
+        tinit_args+=(--team)
+        if [[ "$show_all" == true ]]; then
+          tinit_args+=(--show-all)
+        fi
+      fi
+
       if [[ $i -eq $last_idx ]]; then
-        "$AGENTIC_DIR/tinit.sh" "$gwt_path" --session "$session_name"
+        "$AGENTIC_DIR/tinit.sh" "${tinit_args[@]}"
       else
-        "$AGENTIC_DIR/tinit.sh" "$gwt_path" --session "$session_name" --no-attach
+        "$AGENTIC_DIR/tinit.sh" "${tinit_args[@]}" --no-attach
         echo "Created tmux session: $session_name (attach with: tmux -CC attach -t $session_name)"
       fi
     done
@@ -274,6 +301,9 @@ _gwt_rm() {
     local gwt_path="${REPO_PARENT}/${REPO_NAME}-${name}"
     local branch="${WT_BRANCH_PREFIX}/${name}"
     local session_name="${REPO_NAME}-${name}"
+
+    # Kill team agent sessions if they exist
+    "$AGENTIC_DIR/team-stop.sh" "$session_name" 2>/dev/null || true
 
     # Kill tmux session if it exists
     if tmux has-session -t "$session_name" 2>/dev/null; then
