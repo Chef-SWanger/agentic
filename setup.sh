@@ -21,14 +21,14 @@ if ! echo "$PATH" | tr ':' '\n' | grep -qx "$BIN_DIR"; then
   echo "Added ~/bin to PATH in $(basename "$SHELL_RC")"
 fi
 
-# Source wt.sh if not already sourced
+# Source gwt.sh if not already sourced
 SHELL_RC="$HOME/.bashrc"
 [[ "$(basename "$SHELL")" == "zsh" ]] && SHELL_RC="$HOME/.zshrc"
-if ! grep -qF "source $AGENTIC_DIR/wt.sh" "$SHELL_RC" 2>/dev/null && \
-   ! grep -qF "source ~/agentic/wt.sh" "$SHELL_RC" 2>/dev/null; then
-  echo "source $AGENTIC_DIR/wt.sh" >> "$SHELL_RC"
-  echo "Added wt.sh to $(basename "$SHELL_RC")"
+if ! grep -qF "source $AGENTIC_DIR/gwt.sh" "$SHELL_RC" 2>/dev/null && \
+   ! grep -qF "source ~/agentic/gwt.sh" "$SHELL_RC" 2>/dev/null; then
+  echo "source $AGENTIC_DIR/gwt.sh" >> "$SHELL_RC"
+  echo "Added gwt.sh to $(basename "$SHELL_RC")"
 fi
 
-echo "Setup complete. Available commands: tinit, wt, master-claude"
+echo "Setup complete. Available commands: tinit, gwt, master-claude"
 echo "Run 'source $SHELL_RC' or start a new shell to activate."

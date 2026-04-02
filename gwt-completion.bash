@@ -1,7 +1,7 @@
 #!/bin/bash
-# Bash completion for wt (worktree manager)
+# Bash completion for gwt (worktree manager)
 
-_wt_completions() {
+_gwt_completions() {
   local cur prev subcmd
   cur="${COMP_WORDS[COMP_CWORD]}"
   prev="${COMP_WORDS[COMP_CWORD-1]}"
@@ -30,11 +30,11 @@ _wt_completions() {
       else
         # Complete with existing worktree names
         local names
-        names="$(_wt_get_worktree_names 2>/dev/null)"
+        names="$(_gwt_get_worktree_names 2>/dev/null)"
         COMPREPLY=($(compgen -W "$names" -- "$cur"))
       fi
       ;;
   esac
 }
 
-complete -F _wt_completions wt
+complete -F _gwt_completions gwt

@@ -1,38 +1,38 @@
 #!/bin/bash
 # Worktree management for parallel Claude agent workflows.
-# Source this file in .bashrc: source ~/agentic/wt.sh
+# Source this file in .bashrc: source ~/agentic/gwt.sh
 #
 # Usage:
-#   wt add <name> [name2 ...] [--no-cd] [--tmux]
-#   wt ls
-#   wt rm <pattern> [pattern2 ...] [--force]
+#   gwt add <name> [name2 ...] [--no-cd] [--tmux]
+#   gwt ls
+#   gwt rm <pattern> [pattern2 ...] [--force]
 
 AGENTIC_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 WT_BRANCH_PREFIX="${WT_BRANCH_PREFIX:-stephen}"
 
-wt() {
+gwt() {
   local cmd="${1:-help}"
   shift 2>/dev/null || true
 
   case "$cmd" in
-    add)  _wt_add "$@" ;;
-    ls)   _wt_ls "$@" ;;
-    rm)   _wt_rm "$@" ;;
-    help|--help|-h) _wt_usage ;;
+    add)  _gwt_add "$@" ;;
+    ls)   _gwt_ls "$@" ;;
+    rm)   _gwt_rm "$@" ;;
+    help|--help|-h) _gwt_usage ;;
     *)
-      echo "wt: unknown command '$cmd'"
-      _wt_usage
+      echo "gwt: unknown command '$cmd'"
+      _gwt_usage
       return 1
       ;;
   esac
 }
 
-_wt_usage() {
+_gwt_usage() {
   cat <<'EOF'
 Usage:
-  wt add <name> [name2 ...] [--no-cd] [--tmux] [--prefix PREFIX] [--branch BRANCH]
-  wt ls                                           List worktrees
-  wt rm <pattern> [pattern2 ...] [--force]        Remove worktree(s)
+  gwt add <name> [name2 ...] [--no-cd] [--tmux] [--prefix PREFIX] [--branch BRANCH]
+  gwt ls                                           List worktrees
+  gwt rm <pattern> [pattern2 ...] [--force]        Remove worktree(s)
 
 Options:
   --no-cd        (add) Don't cd into the worktree (single worktree only)
@@ -43,10 +43,10 @@ Options:
 EOF
 }
 
-_wt_repo_info() {
+_gwt_repo_info() {
   local toplevel
   toplevel="$(git rev-parse --show-toplevel 2>/dev/null)" || {
-    echo "wt: not inside a git repository" >&2
+    echo "gwt: not inside a git repository" >&2
     return 1
   }
   REPO_ROOT="$toplevel"
@@ -54,7 +54,7 @@ _wt_repo_info() {
   REPO_PARENT="$(dirname "$REPO_ROOT")"
 }
 
-_wt_add() {
+_gwt_add() {
   local names=()
   local no_cd=false
   local use_tmux=false
@@ -67,27 +67,27 @@ _wt_add() {
       -t|--tmux) use_tmux=true; shift ;;
       --prefix)  prefix="$2"; shift 2 ;;
       --branch)  exact_branch="$2"; shift 2 ;;
-      --*)       echo "wt add: unknown flag '$1'"; return 1 ;;
+      --*)       echo "gwt add: unknown flag '$1'"; return 1 ;;
       *)         names+=("$1"); shift ;;
     esac
   done
 
   if [[ ${#names[@]} -eq 0 ]]; then
-    echo "wt add: at least one name is required"
-    echo "Usage: wt add <name> [name2 ...] [--no-cd] [--tmux] [--prefix PREFIX] [--branch BRANCH]"
+    echo "gwt add: at least one name is required"
+    echo "Usage: gwt add <name> [name2 ...] [--no-cd] [--tmux] [--prefix PREFIX] [--branch BRANCH]"
     return 1
   fi
 
   if [[ -n "$exact_branch" && ${#names[@]} -gt 1 ]]; then
-    echo "wt add: --branch can only be used with a single worktree"
+    echo "gwt add: --branch can only be used with a single worktree"
     return 1
   fi
 
-  _wt_repo_info || return 1
+  _gwt_repo_info || return 1
 
   local created=()
   for name in "${names[@]}"; do
-    local wt_path="${REPO_PARENT}/${REPO_NAME}-${name}"
+    local gwt_path="${REPO_PARENT}/${REPO_NAME}-${name}"
     local branch
     if [[ -n "$exact_branch" ]]; then
       branch="$exact_branch"
@@ -95,20 +95,20 @@ _wt_add() {
       branch="${prefix}/${name}"
     fi
 
-    if [[ -d "$wt_path" ]]; then
-      echo "wt: worktree '${REPO_NAME}-${name}' already exists at $wt_path"
+    if [[ -d "$gwt_path" ]]; then
+      echo "gwt: worktree '${REPO_NAME}-${name}' already exists at $gwt_path"
       continue
     fi
 
     if git show-ref --verify --quiet "refs/heads/${branch}" 2>/dev/null; then
-      echo "wt: branch '${branch}' already exists, using it"
-      git worktree add "$wt_path" "$branch" || {
-        echo "wt: failed to create worktree for '$name'"
+      echo "gwt: branch '${branch}' already exists, using it"
+      git worktree add "$gwt_path" "$branch" || {
+        echo "gwt: failed to create worktree for '$name'"
         continue
       }
     else
-      git worktree add -b "$branch" "$wt_path" || {
-        echo "wt: failed to create worktree for '$name'"
+      git worktree add -b "$branch" "$gwt_path" || {
+        echo "gwt: failed to create worktree for '$name'"
         continue
       }
     fi
@@ -124,13 +124,13 @@ _wt_add() {
   # Single worktree: cd or tmux
   if [[ ${#created[@]} -eq 1 ]]; then
     local name="${created[0]}"
-    local wt_path="${REPO_PARENT}/${REPO_NAME}-${name}"
+    local gwt_path="${REPO_PARENT}/${REPO_NAME}-${name}"
 
     if [[ "$use_tmux" == true ]]; then
-      "$AGENTIC_DIR/tinit.sh" "$wt_path" --session "${REPO_NAME}-${name}"
+      "$AGENTIC_DIR/tinit.sh" "$gwt_path" --session "${REPO_NAME}-${name}"
     elif [[ "$no_cd" == false ]]; then
-      cd "$wt_path" || return 1
-      echo "Changed directory to $wt_path"
+      cd "$gwt_path" || return 1
+      echo "Changed directory to $gwt_path"
     fi
     return 0
   fi
@@ -140,13 +140,13 @@ _wt_add() {
     local last_idx=$(( ${#created[@]} - 1 ))
     for i in "${!created[@]}"; do
       local name="${created[$i]}"
-      local wt_path="${REPO_PARENT}/${REPO_NAME}-${name}"
+      local gwt_path="${REPO_PARENT}/${REPO_NAME}-${name}"
       local session_name="${REPO_NAME}-${name}"
 
       if [[ $i -eq $last_idx ]]; then
-        "$AGENTIC_DIR/tinit.sh" "$wt_path" --session "$session_name"
+        "$AGENTIC_DIR/tinit.sh" "$gwt_path" --session "$session_name"
       else
-        "$AGENTIC_DIR/tinit.sh" "$wt_path" --session "$session_name" --no-attach
+        "$AGENTIC_DIR/tinit.sh" "$gwt_path" --session "$session_name" --no-attach
         echo "Created tmux session: $session_name (attach with: tmux -CC attach -t $session_name)"
       fi
     done
@@ -159,26 +159,26 @@ _wt_add() {
   fi
 }
 
-_wt_ls() {
-  _wt_repo_info || return 1
+_gwt_ls() {
+  _gwt_repo_info || return 1
 
   local prefix="${REPO_PARENT}/${REPO_NAME}-"
   local found=false
 
   while IFS= read -r line; do
-    local wt_path wt_branch
-    wt_path="$(echo "$line" | awk '{print $1}')"
-    wt_branch="$(echo "$line" | awk '{print $3}' | tr -d '[]')"
+    local gwt_path gwt_branch
+    gwt_path="$(echo "$line" | awk '{print $1}')"
+    gwt_branch="$(echo "$line" | awk '{print $3}' | tr -d '[]')"
 
     # Skip the main worktree
-    if [[ "$wt_path" == "$REPO_ROOT" ]]; then
+    if [[ "$gwt_path" == "$REPO_ROOT" ]]; then
       continue
     fi
 
     # Only show worktrees that match our naming convention
-    if [[ "$wt_path" == ${prefix}* ]]; then
-      local suffix="${wt_path#${prefix}}"
-      printf "  %-20s %-30s %s\n" "$suffix" "$wt_branch" "$wt_path"
+    if [[ "$gwt_path" == ${prefix}* ]]; then
+      local suffix="${gwt_path#${prefix}}"
+      printf "  %-20s %-30s %s\n" "$suffix" "$gwt_branch" "$gwt_path"
       found=true
     fi
   done < <(git worktree list)
@@ -188,42 +188,42 @@ _wt_ls() {
   fi
 }
 
-_wt_get_worktree_names() {
-  _wt_repo_info 2>/dev/null || return 1
+_gwt_get_worktree_names() {
+  _gwt_repo_info 2>/dev/null || return 1
   local prefix="${REPO_PARENT}/${REPO_NAME}-"
 
   git worktree list 2>/dev/null | while IFS= read -r line; do
-    local wt_path
-    wt_path="$(echo "$line" | awk '{print $1}')"
-    if [[ "$wt_path" == ${prefix}* ]]; then
-      echo "${wt_path#${prefix}}"
+    local gwt_path
+    gwt_path="$(echo "$line" | awk '{print $1}')"
+    if [[ "$gwt_path" == ${prefix}* ]]; then
+      echo "${gwt_path#${prefix}}"
     fi
   done
 }
 
-_wt_rm() {
+_gwt_rm() {
   local patterns=()
   local force=false
 
   while [[ $# -gt 0 ]]; do
     case "$1" in
       --force)  force=true; shift ;;
-      --*)      echo "wt rm: unknown flag '$1'"; return 1 ;;
+      --*)      echo "gwt rm: unknown flag '$1'"; return 1 ;;
       *)        patterns+=("$1"); shift ;;
     esac
   done
 
   if [[ ${#patterns[@]} -eq 0 ]]; then
-    echo "wt rm: at least one name or pattern is required"
-    echo "Usage: wt rm <pattern> [pattern2 ...] [--force]"
+    echo "gwt rm: at least one name or pattern is required"
+    echo "Usage: gwt rm <pattern> [pattern2 ...] [--force]"
     return 1
   fi
 
-  _wt_repo_info || return 1
+  _gwt_repo_info || return 1
 
   # Collect matching worktree names
   local all_names
-  mapfile -t all_names < <(_wt_get_worktree_names)
+  mapfile -t all_names < <(_gwt_get_worktree_names)
   local to_remove=()
 
   for pattern in "${patterns[@]}"; do
@@ -248,7 +248,7 @@ _wt_rm() {
       esac
     done
     if [[ "$matched" == false ]]; then
-      echo "wt rm: no worktree matching '$pattern'"
+      echo "gwt rm: no worktree matching '$pattern'"
     fi
   done
 
@@ -271,7 +271,7 @@ _wt_rm() {
 
   # Remove
   for name in "${to_remove[@]}"; do
-    local wt_path="${REPO_PARENT}/${REPO_NAME}-${name}"
+    local gwt_path="${REPO_PARENT}/${REPO_NAME}-${name}"
     local branch="${WT_BRANCH_PREFIX}/${name}"
     local session_name="${REPO_NAME}-${name}"
 
@@ -282,20 +282,20 @@ _wt_rm() {
     fi
 
     # If we're currently inside the worktree being removed, cd out first
-    if [[ "$(pwd)" == "$wt_path" || "$(pwd)" == "$wt_path/"* ]]; then
+    if [[ "$(pwd)" == "$gwt_path" || "$(pwd)" == "$gwt_path/"* ]]; then
       cd "$REPO_ROOT" || true
       echo "Changed directory back to $REPO_ROOT"
     fi
 
     # Remove worktree
     if [[ "$force" == true ]]; then
-      git worktree remove --force "$wt_path" 2>/dev/null || {
-        echo "wt: failed to remove worktree '$name'"
+      git worktree remove --force "$gwt_path" 2>/dev/null || {
+        echo "gwt: failed to remove worktree '$name'"
         continue
       }
     else
-      git worktree remove "$wt_path" 2>/dev/null || {
-        echo "wt: failed to remove worktree '$name' (use --force to override)"
+      git worktree remove "$gwt_path" 2>/dev/null || {
+        echo "gwt: failed to remove worktree '$name' (use --force to override)"
         continue
       }
     fi
@@ -306,7 +306,7 @@ _wt_rm() {
         git branch -D "$branch" 2>/dev/null || true
       else
         git branch -d "$branch" 2>/dev/null || {
-          echo "wt: branch '$branch' has unmerged changes (use --force to delete)"
+          echo "gwt: branch '$branch' has unmerged changes (use --force to delete)"
         }
       fi
     fi
@@ -316,6 +316,6 @@ _wt_rm() {
 }
 
 # Source completion if interactive
-if [[ -n "${PS1:-}" ]] && [[ -f "$AGENTIC_DIR/wt-completion.bash" ]]; then
-  source "$AGENTIC_DIR/wt-completion.bash"
+if [[ -n "${PS1:-}" ]] && [[ -f "$AGENTIC_DIR/gwt-completion.bash" ]]; then
+  source "$AGENTIC_DIR/gwt-completion.bash"
 fi

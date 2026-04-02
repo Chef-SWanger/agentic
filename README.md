@@ -23,7 +23,7 @@ ln -sf ~/agentic/tinit.sh ~/bin/tinit
 ln -sf ~/agentic/master-claude/master-claude.sh ~/bin/master-claude
 
 # Source wt in your shell
-echo 'source ~/agentic/wt.sh' >> ~/.bashrc
+echo 'source ~/agentic/gwt.sh' >> ~/.bashrc
 source ~/.bashrc
 ```
 
@@ -31,7 +31,7 @@ source ~/.bashrc
 
 ### `tinit` — Tmux Session Initializer
 
-Creates a tmux session with a vertical split: left pane runs `cl` (Claude), right pane is a free shell.
+Creates a tmux session with a vertical split: left pane runs `claude --dangerously-enable-internet-mode --dangerously-skip-permissions`, right pane is a free shell.
 
 ```bash
 tinit --session work              # create + attach, uses cwd
@@ -46,25 +46,25 @@ tinit --session work --no-attach  # create without attaching
 
 Attaches with `tmux -CC` (iTerm2 control mode).
 
-### `wt` — Git Worktree Manager
+### `gwt` — Git Worktree Manager
 
 Creates and manages git worktrees for parallel agent workflows. Worktrees are created at `<repo-parent>/<repo>-<name>` with branch `<prefix>/<name>`.
 
 ```bash
-wt add task1                      # create worktree, cd into it
-wt add task1 task2 task3 --tmux   # create 3 worktrees with tmux sessions
-wt ls                             # list worktrees
-wt rm task1                       # remove worktree + branch
-wt rm 'task*' --force             # glob remove, force delete
+gwt add task1                      # create worktree, cd into it
+gwt add task1 task2 task3 --tmux   # create 3 worktrees with tmux sessions
+gwt ls                             # list worktrees
+gwt rm task1                       # remove worktree + branch
+gwt rm 'task*' --force             # glob remove, force delete
 ```
 
 | Subcommand | Description |
 |------------|-------------|
-| `wt add <name> [...]` | Create worktree(s) |
-| `wt ls` | List worktrees for current repo |
-| `wt rm <pattern> [...]` | Remove worktree(s), kill tmux sessions, delete branches |
+| `gwt add <name> [...]` | Create worktree(s) |
+| `gwt ls` | List worktrees for current repo |
+| `gwt rm <pattern> [...]` | Remove worktree(s), kill tmux sessions, delete branches |
 
-**`wt add` flags:**
+**`gwt add` flags:**
 
 | Flag | Description |
 |------|-------------|
@@ -73,13 +73,13 @@ wt rm 'task*' --force             # glob remove, force delete
 | `--prefix PFX` | Override branch prefix (default: `$WT_BRANCH_PREFIX`, currently `stephen`) |
 | `--branch NAME` | Use exact branch name (single worktree only) |
 
-**`wt rm` flags:**
+**`gwt rm` flags:**
 
 | Flag | Description |
 |------|-------------|
 | `--force` | Force remove with uncommitted changes, force-delete branch |
 
-Tab completion is available via `wt-completion.bash` (auto-sourced).
+Tab completion is available via `gwt-completion.bash` (auto-sourced).
 
 ### `master-claude` — Multi-Agent Orchestration
 
@@ -99,8 +99,8 @@ agentic/
 ├── README.md                     # This file
 ├── setup.sh                      # One-command setup script
 ├── tinit.sh                      # Tmux session initializer
-├── wt.sh                         # Worktree manager (sourced in .bashrc)
-├── wt-completion.bash            # Tab completion for wt
+├── gwt.sh                         # Worktree manager (sourced in .bashrc)
+├── gwt-completion.bash            # Tab completion for wt
 └── master-claude/                # Multi-agent orchestration
     ├── master-claude.sh          # Main CLI entrypoint
     ├── README.md                 # Detailed docs
@@ -113,6 +113,6 @@ agentic/
 
 | Variable | Where | Default | Purpose |
 |----------|-------|---------|---------|
-| `WT_BRANCH_PREFIX` | shell env | `stephen` | Branch prefix for `wt add` |
+| `WT_BRANCH_PREFIX` | shell env | `stephen` | Branch prefix for `gwt add` |
 | `CHECKOUT_BASE` | `~/.master-claude/config` | `~/fbsource-multi` | Base dir for master-claude checkouts |
 | `CHECKOUT_PREFIX` | `~/.master-claude/config` | `fbsource` | Checkout directory prefix |

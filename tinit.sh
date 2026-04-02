@@ -40,7 +40,7 @@ tmux new-session -d -s "$SESSION" -c "$DIR"
 tmux split-window -h -t "$SESSION" -c "$DIR"
 
 # Send "cl" to the left pane (pane 0)
-tmux send-keys -t "$SESSION:0.0" 'cl' C-m
+tmux send-keys -t "$SESSION:0.0" 'claude --dangerously-enable-internet-mode --dangerously-skip-permissions' C-m
 
 # Select the right pane
 tmux select-pane -t "$SESSION:0.1"
