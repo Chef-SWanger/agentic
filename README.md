@@ -73,7 +73,8 @@ ag ls                                   # list active sessions (current repo)
 ag ls --all                             # list all sessions across all repos
 ag wt                                   # list worktrees
 ag attach feature                       # attach to a session (fuzzy match)
-ag rm task1                             # remove worktree + branch + sessions
+ag rm task1                             # remove by worktree name
+ag rm myrepo-task1                      # remove by full session name
 ag rm 'task*' --force                   # glob remove, force delete
 ```
 
@@ -83,7 +84,7 @@ ag rm 'task*' --force                   # glob remove, force delete
 | `ag ls [--all]` | List active tmux sessions (type, created, last active) |
 | `ag wt` | List worktrees for current repo |
 | `ag attach <name>` | Attach to a session (exact, repo-prefixed, or fuzzy match) |
-| `ag rm <pattern> [...]` | Remove worktree(s), kill sessions, delete branches |
+| `ag rm <pattern> [...]` | Remove worktree(s), kill sessions, delete branches. Works from anywhere — matches by worktree name or session name. |
 
 **`ag add` flags:**
 
