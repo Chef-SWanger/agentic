@@ -37,20 +37,20 @@ Options:
 Layouts:
   Default:           [Claude] [Terminal]
   --editor:          [Claude] [Nvim] [Terminal]
-  --team:            [Master] [Terminal]  (Executor/Validator in background)
+  --team:            [Master] [Terminal]  (agents in background)
   --team --editor:   [Master] [Nvim] [Terminal]
   --team --show-all:
     +----------+----------+-----------+
-    |          | EXECUTOR | VALIDATOR |
+    |          | EXECUTOR | RESEARCHER|
     |  MASTER  +----------+-----------+
-    |          |       TERMINAL       |
+    |          | VALIDATOR| TERMINAL  |
     +----------+----------+-----------+
   --team --show-all --editor:
-    +----------+----------+-----------+
-    |          | EXECUTOR |   NVIM    |
-    |  MASTER  +----------+-----------+
-    |          | VALIDATR | TERMINAL  |
-    +----------+----------+-----------+
+    +----------+------------+-----------+
+    |          | RESEARCHER |   NVIM    |
+    |  MASTER  | EXECUTOR   +-----------+
+    |          | VALIDATOR  | TERMINAL  |
+    +----------+------------+-----------+
 EOF
 }
 
@@ -130,28 +130,34 @@ EXECUTOR_SESSION="${SESSION}-executor"
 VALIDATOR_SESSION="${SESSION}-validator"
 
 if [[ "$SHOW_ALL" == true ]]; then
-  # --- 4-pane layout: Master | Executor | Validator | Terminal ---
   # All agents run directly in panes (no background sessions, no nesting).
 
-  # Get launcher scripts for all 3 roles (--pane-mode so agents target panes, not sessions)
-  mapfile -t LAUNCHERS < <("$AGENTIC_DIR/team-start.sh" "$SESSION" "$DIR" --launchers-only --pane-mode)
+  if [[ "$EDITOR_PANE" == true ]]; then
+    # Get launcher scripts with editor pane layout
+    PANE_LAYOUT=editor mapfile -t LAUNCHERS < <("$AGENTIC_DIR/team-start.sh" "$SESSION" "$DIR" --launchers-only --pane-mode)
+  else
+    PANE_LAYOUT=no-editor mapfile -t LAUNCHERS < <("$AGENTIC_DIR/team-start.sh" "$SESSION" "$DIR" --launchers-only --pane-mode)
+  fi
   MASTER_LAUNCHER="${LAUNCHERS[0]}"
-  EXECUTOR_LAUNCHER="${LAUNCHERS[1]}"
-  VALIDATOR_LAUNCHER="${LAUNCHERS[2]}"
+  RESEARCHER_LAUNCHER="${LAUNCHERS[1]}"
+  EXECUTOR_LAUNCHER="${LAUNCHERS[2]}"
+  VALIDATOR_LAUNCHER="${LAUNCHERS[3]}"
 
   # Create session — pane 0 is Master (full height left)
   tmux new-session -d -s "$SESSION" -c "$DIR"
 
-  # Tag as a team session so ag ps can identify it
+  # Tag as a team session so ag ls can identify it
   tmux set-environment -t "$SESSION" AG_TEAM_MODE "show-all"
 
   if [[ "$EDITOR_PANE" == true ]]; then
     # Layout with --editor:
-    # +----------+----------+-----------+
-    # |          | EXECUTOR |   NVIM    |
-    # |  MASTER  +----------+-----------+
-    # |          | VALIDATR | TERMINAL  |
-    # +----------+----------+-----------+
+    # +----------+------------+-----------+
+    # |          | RESEARCHER |           |
+    # |          +------------+   NVIM    |
+    # |  MASTER  | EXECUTOR   |           |
+    # |          +------------+-----------+
+    # |          | VALIDATOR  | TERMINAL  |
+    # +----------+------------+-----------+
 
     # Split right 2/3 for middle+right columns
     tmux split-window -h -t "$SESSION:0.0" -c "$DIR" -p 66
@@ -159,58 +165,66 @@ if [[ "$SHOW_ALL" == true ]]; then
     # Split that into middle and right columns
     tmux split-window -h -t "$SESSION:0.1" -c "$DIR" -p 50
 
-    # Split middle column: Executor (top) / Validator (bottom)
-    tmux split-window -v -t "$SESSION:0.1" -c "$DIR" -p 50
+    # Split middle column into 3: Researcher / Executor / Validator
+    tmux split-window -v -t "$SESSION:0.1" -c "$DIR" -p 66
+    tmux split-window -v -t "$SESSION:0.2" -c "$DIR" -p 50
 
     # Split right column: Nvim (top) / Terminal (bottom)
-    tmux split-window -v -t "$SESSION:0.3" -c "$DIR" -p 50
+    tmux split-window -v -t "$SESSION:0.4" -c "$DIR" -p 50
 
     # Panes:
     #   0 = Master (left, full height)
-    #   1 = Executor (middle-top)
-    #   2 = Validator (middle-bottom)
-    #   3 = Nvim (right-top)
-    #   4 = Terminal (right-bottom)
+    #   1 = Researcher (top-middle)
+    #   2 = Executor (mid-middle)
+    #   3 = Validator (bottom-middle)
+    #   4 = Nvim (top-right)
+    #   5 = Terminal (bottom-right)
 
     sleep 1
 
     tmux send-keys -t "$SESSION:0.0" "'$MASTER_LAUNCHER'" C-m
-    tmux send-keys -t "$SESSION:0.1" "'$EXECUTOR_LAUNCHER'" C-m
-    tmux send-keys -t "$SESSION:0.2" "'$VALIDATOR_LAUNCHER'" C-m
-    tmux send-keys -t "$SESSION:0.3" "nvim" C-m
+    tmux send-keys -t "$SESSION:0.1" "'$RESEARCHER_LAUNCHER'" C-m
+    tmux send-keys -t "$SESSION:0.2" "'$EXECUTOR_LAUNCHER'" C-m
+    tmux send-keys -t "$SESSION:0.3" "'$VALIDATOR_LAUNCHER'" C-m
+    tmux send-keys -t "$SESSION:0.4" "nvim" C-m
 
     # Select the terminal pane
-    tmux select-pane -t "$SESSION:0.4"
+    tmux select-pane -t "$SESSION:0.5"
 
   else
     # Layout without --editor:
     # +----------+----------+-----------+
-    # |          |          | VALIDATOR |
-    # |  MASTER  | EXECUTOR +-----------+
-    # |          |          | TERMINAL  |
+    # |          | EXECUTOR | RESEARCHER|
+    # |  MASTER  +----------+-----------+
+    # |          | VALIDATOR| TERMINAL  |
     # +----------+----------+-----------+
 
     # Split into 3 columns
     tmux split-window -h -t "$SESSION:0.0" -c "$DIR" -p 66
     tmux split-window -h -t "$SESSION:0.1" -c "$DIR" -p 50
 
-    # Split right column: Validator (top) / Terminal (bottom)
-    tmux split-window -v -t "$SESSION:0.2" -c "$DIR" -p 50
+    # Split middle column: Executor (top) / Validator (bottom)
+    tmux split-window -v -t "$SESSION:0.1" -c "$DIR" -p 50
+
+    # Split right column: Researcher (top) / Terminal (bottom)
+    tmux split-window -v -t "$SESSION:0.3" -c "$DIR" -p 50
 
     # Panes:
     #   0 = Master (left, full height)
-    #   1 = Executor (middle, full height)
-    #   2 = Validator (top-right)
-    #   3 = Terminal (bottom-right)
+    #   1 = Executor (top-middle)
+    #   2 = Validator (bottom-middle)
+    #   3 = Researcher (top-right)
+    #   4 = Terminal (bottom-right)
 
     sleep 1
 
     tmux send-keys -t "$SESSION:0.0" "'$MASTER_LAUNCHER'" C-m
     tmux send-keys -t "$SESSION:0.1" "'$EXECUTOR_LAUNCHER'" C-m
     tmux send-keys -t "$SESSION:0.2" "'$VALIDATOR_LAUNCHER'" C-m
+    tmux send-keys -t "$SESSION:0.3" "'$RESEARCHER_LAUNCHER'" C-m
 
     # Select the terminal pane
-    tmux select-pane -t "$SESSION:0.3"
+    tmux select-pane -t "$SESSION:0.4"
   fi
 
 else

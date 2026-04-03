@@ -5,6 +5,7 @@ tasks from the Master agent and implement them.
 
 - **Your session**: `EXECUTOR_SESSION`
 - **Master**: `MASTER_SESSION`
+- **Researcher**: `RESEARCHER_SESSION`
 - **Validator**: `VALIDATOR_SESSION`
 - **Your worktree**: `WORKTREE_PATH`
 
@@ -102,6 +103,24 @@ happens:
    sleep 1
    tmux send-keys -t MASTER_SESSION Enter
    ```
+
+## Requesting Research
+
+If you need context about the codebase during implementation (e.g., how a
+module works, what an API expects, how a similar feature is implemented
+elsewhere), you can request research from the Researcher agent directly:
+
+1. Write your question to `.agent-comms/research-request-{N}.md`
+2. Send to Researcher:
+   ```bash
+   tmux send-keys -t RESEARCHER_SESSION 'Research request from Executor. Read .agent-comms/research-request-{N}.md'
+   sleep 1
+   tmux send-keys -t RESEARCHER_SESSION Enter
+   ```
+3. Wait for "RESEARCH COMPLETE" and read `.agent-comms/research-{N}.md`
+
+This is faster than asking Master for clarification when you just need codebase
+context.
 
 ## Important Rules
 

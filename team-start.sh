@@ -1,5 +1,5 @@
 #!/bin/bash
-# Launches a team of 3 agents (Master, Executor, Validator) for a worktree.
+# Launches a team of 4 agents (Master, Researcher, Executor, Validator) for a worktree.
 # Called by tinit.sh when --team is passed.
 #
 # Usage: team-start.sh <session-base> <worktree-path>
@@ -10,6 +10,7 @@
 #                          print the file path; do not launch agents
 #
 # Creates tmux sessions:
+#   <session-base>-researcher
 #   <session-base>-executor
 #   <session-base>-validator
 #
@@ -24,18 +25,30 @@ SESSION_BASE="$1"
 WORKTREE_PATH="$2"
 
 MASTER_SESSION="$SESSION_BASE"
+RESEARCHER_SESSION="${SESSION_BASE}-researcher"
 EXECUTOR_SESSION="${SESSION_BASE}-executor"
 VALIDATOR_SESSION="${SESSION_BASE}-validator"
 
 # Check for --pane-mode flag (used in --show-all where agents are panes, not sessions)
+# Pane layout depends on whether --editor is also set (detected via PANE_LAYOUT env)
 PANE_MODE=false
+PANE_LAYOUT="${PANE_LAYOUT:-no-editor}"
 for arg in "$@"; do
   if [[ "$arg" == "--pane-mode" ]]; then
     PANE_MODE=true
-    # In pane mode, agents are panes in the same tmux session
-    MASTER_SESSION="${SESSION_BASE}:0.0"
-    EXECUTOR_SESSION="${SESSION_BASE}:0.1"
-    VALIDATOR_SESSION="${SESSION_BASE}:0.2"
+    if [[ "$PANE_LAYOUT" == "editor" ]]; then
+      # --editor layout: Master | Researcher/Executor/Validator | Nvim/Terminal
+      MASTER_SESSION="${SESSION_BASE}:0.0"
+      RESEARCHER_SESSION="${SESSION_BASE}:0.1"
+      EXECUTOR_SESSION="${SESSION_BASE}:0.2"
+      VALIDATOR_SESSION="${SESSION_BASE}:0.3"
+    else
+      # no-editor layout: Master | Executor/Validator | Researcher/Terminal
+      MASTER_SESSION="${SESSION_BASE}:0.0"
+      EXECUTOR_SESSION="${SESSION_BASE}:0.1"
+      VALIDATOR_SESSION="${SESSION_BASE}:0.2"
+      RESEARCHER_SESSION="${SESSION_BASE}:0.3"
+    fi
     break
   fi
 done
@@ -100,6 +113,7 @@ assemble_prompt() {
   prompt="${prompt//SESSION_NAME/$SESSION_BASE}"
   prompt="${prompt//WORKTREE_PATH/$WORKTREE_PATH}"
   prompt="${prompt//MASTER_SESSION/$MASTER_SESSION}"
+  prompt="${prompt//RESEARCHER_SESSION/$RESEARCHER_SESSION}"
   prompt="${prompt//EXECUTOR_SESSION/$EXECUTOR_SESSION}"
   prompt="${prompt//VALIDATOR_SESSION/$VALIDATOR_SESSION}"
 
@@ -126,9 +140,10 @@ write_launcher() {
   # Build a banner with exact alignment
   local banner
   case "$label" in
-    MASTER)    banner="|  MASTER                |" ;;
-    EXECUTOR)  banner="|  EXECUTOR              |" ;;
-    VALIDATOR) banner="|  VALIDATOR             |" ;;
+    MASTER)     banner="|  MASTER                |" ;;
+    RESEARCHER) banner="|  RESEARCHER            |" ;;
+    EXECUTOR)   banner="|  EXECUTOR              |" ;;
+    VALIDATOR)  banner="|  VALIDATOR             |" ;;
     *)         banner="|  ${label}              |" ;;
   esac
   cat > "$launcher" <<LAUNCHER_EOF
@@ -183,9 +198,9 @@ case "$MODE" in
     ;;
 
   --launchers-only)
-    # Write launcher scripts for all 3 roles and print their paths (one per line).
+    # Write launcher scripts for all 4 roles and print their paths (one per line).
     # Does NOT create any tmux sessions. Used by tinit --show-all.
-    for role in master executor validator; do
+    for role in master researcher executor validator; do
       prompt_file="$(write_prompt_file "$role")"
       write_launcher "$role" "$prompt_file"
     done
@@ -193,7 +208,10 @@ case "$MODE" in
     ;;
 
   "")
-    # Default: launch Executor and Validator in background tmux sessions
+    # Default: launch Researcher, Executor, and Validator in background tmux sessions
+    echo "Starting Researcher agent (session: $RESEARCHER_SESSION)..."
+    launch_agent "researcher" "$RESEARCHER_SESSION"
+
     echo "Starting Executor agent (session: $EXECUTOR_SESSION)..."
     launch_agent "executor" "$EXECUTOR_SESSION"
 
@@ -201,6 +219,7 @@ case "$MODE" in
     launch_agent "validator" "$VALIDATOR_SESSION"
 
     echo "Team agents started."
+    echo "  Researcher: $RESEARCHER_SESSION"
     echo "  Executor: $EXECUTOR_SESSION"
     echo "  Validator: $VALIDATOR_SESSION"
     ;;

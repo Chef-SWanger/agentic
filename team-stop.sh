@@ -16,7 +16,7 @@ if [[ -z "$SESSION_BASE" ]]; then
 fi
 
 # Kill agent tmux sessions
-for suffix in executor validator; do
+for suffix in researcher executor validator; do
   session="${SESSION_BASE}-${suffix}"
   if tmux has-session -t "$session" 2>/dev/null; then
     tmux kill-session -t "$session"

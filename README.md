@@ -108,20 +108,22 @@ Tab completion is available via `ag-completion.bash` (auto-sourced).
 
 ### Agent Teams
 
-When `--team` is passed to `ag add` or `tinit`, three coordinated Claude agents are launched to work together on complex tasks:
+When `--team` is passed to `ag add` or `tinit`, four coordinated Claude agents are launched to work together on complex tasks:
 
 ```
-User ◄──► Master ──► Executor ──► Validator
-           │  ◄── escalation ◄── feedback ──┘
+User ◄──► Master ──► Researcher (investigate)
+           │    └──► Executor ──► Validator
+           │          ◄── escalation ◄── feedback ──┘
            │
-           └──► User can also talk directly to Executor/Validator
+           └──► User can talk directly to any agent
                 (they will update Master to keep it in sync)
 ```
 
 | Role | Responsibilities |
 |------|-----------------|
-| **Master** | User-facing. Collaborates with the user to brainstorm, plan, and break down the project into tasks. Creates execution plans and validation plans. Delegates all implementation to the Executor — never writes code itself. Handles escalations when the Executor is blocked or fails validation repeatedly. |
-| **Executor** | Receives tasks from Master and implements them. Asks Master for clarification when specs are ambiguous. On completion, notifies the Validator. If validation fails, retries up to 5 times before escalating to Master for help or human intervention. |
+| **Master** | User-facing. Collaborates with the user to brainstorm, plan, and break down the project into tasks. Delegates research to the Researcher before planning. Creates execution plans and validation plans. Gets user approval before delegating. Never writes code. Handles escalations and debugging workflows. |
+| **Researcher** | Investigates codebases, traces code paths, gathers context. Receives tasks from both Master and Executor. Writes structured findings to `.agent-comms/research-{N}.md`. For debugging, determines root cause and whether the issue is code-fixable. Never modifies code. |
+| **Executor** | Receives tasks from Master and implements them. Can request research from Researcher for codebase context. On completion, notifies the Validator. If validation fails, retries up to 5 times before escalating to Master. |
 | **Validator** | Receives validation specs from Master. When Executor signals task completion, validates the work against the plan. Always performs a mandatory code review (correctness, syntax, quality, security, edge cases) even if not in the validation plan. Reports pass/fail with detailed feedback to Executor. |
 
 #### Example: Building a REST API
@@ -195,15 +197,27 @@ Agents use a hybrid approach:
 
 | File | Direction | Purpose |
 |------|-----------|---------|
+| `.agent-comms/research-request-{N}.md` | Master/Executor → Researcher | What to investigate |
+| `.agent-comms/research-{N}.md` | Researcher → Master/Executor | Structured findings |
 | `.agent-comms/task-{N}.md` | Master → Executor | Task specification with acceptance criteria |
 | `.agent-comms/validation-plan-{N}.md` | Master → Validator | What to verify (tests, behavior, edge cases) |
 | `.agent-comms/validation-result-{N}.md` | Validator → Executor | Pass/fail with detailed feedback |
 
 The `.agent-comms/` directory is automatically created and added to `.gitignore` (or `.hgignore` for Sapling repos). It is cleaned up when you run `ag rm`.
 
+#### Debugging Workflow
+
+When you describe a bug to Master, it enters debugging mode:
+
+1. Master asks if you want **autonomous** (full cycle without approval) or **approval** mode
+2. Master delegates investigation to Researcher
+3. Researcher determines root cause and whether it's code-fixable
+4. If code-fixable: Master creates fix plan → Executor implements → Validator validates
+5. If not code-fixable: Master presents findings and recommendations to you
+
 #### Direct User Interaction
 
-You can talk directly to any agent, not just the Master. If you interact with the Executor or Validator directly (e.g., to give them additional context or override instructions), they will automatically notify the Master with a summary so it stays in sync.
+You can talk directly to any agent, not just the Master. If you interact with any agent directly, they will automatically notify the Master with a summary so it stays in sync.
 
 ## File Structure
 
@@ -218,6 +232,7 @@ agentic/
 ├── team-stop.sh                  # Stops agent team sessions
 ├── prompts/                      # Agent system prompts
 │   ├── master.md                 # Master agent prompt
+│   ├── researcher.md             # Researcher agent prompt
 │   ├── executor.md               # Executor agent prompt
 │   ├── validator.md              # Validator agent prompt
 │   └── common/                   # Shared prompt fragments
@@ -227,6 +242,7 @@ agentic/
 │       └── sapling.md            # Sapling-specific VCS instructions
 └── profiles/                     # Claude CLI settings per agent role
     ├── master.json
+    ├── researcher.json
     ├── executor.json
     └── validator.json
 ```

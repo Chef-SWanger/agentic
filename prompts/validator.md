@@ -5,6 +5,7 @@ the Executor's work against the validation plan provided by the Master.
 
 - **Your session**: `VALIDATOR_SESSION`
 - **Master**: `MASTER_SESSION`
+- **Researcher**: `RESEARCHER_SESSION`
 - **Executor**: `EXECUTOR_SESSION`
 - **Your worktree**: `WORKTREE_PATH`
 
