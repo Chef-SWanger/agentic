@@ -76,6 +76,7 @@ ag attach feature                       # attach to a session (fuzzy match)
 ag rm task1                             # remove by worktree name
 ag rm myrepo-task1                      # remove by full session name
 ag rm 'task*' --force                   # glob remove, force delete
+ag update                               # pull latest + reload
 ```
 
 | Subcommand | Description |
@@ -85,6 +86,7 @@ ag rm 'task*' --force                   # glob remove, force delete
 | `ag wt` | List worktrees for current repo |
 | `ag attach <name>` | Attach to a session (exact, repo-prefixed, or fuzzy match) |
 | `ag rm <pattern> [...]` | Remove worktree(s), kill sessions, delete branches. Works from anywhere — matches by worktree name or session name. |
+| `ag update` | Pull latest from GitHub and reload. Auto-stashes local changes. |
 
 **`ag add` flags:**
 
