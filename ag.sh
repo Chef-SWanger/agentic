@@ -16,8 +16,9 @@ ag() {
 
   case "$cmd" in
     add)  _ag_add "$@" ;;
-    ls)   _ag_ls "$@" ;;
-    ps)   _ag_ps "$@" ;;
+    ls)   _ag_ps "$@" ;;
+    wt)   _ag_wt "$@" ;;
+    attach) _ag_attach "$@" ;;
     rm)   _ag_rm "$@" ;;
     help|--help|-h) _ag_usage ;;
     *)
@@ -33,8 +34,9 @@ _ag_usage() {
 Usage:
   ag add <name> [name2 ...] [--no-tmux] [--no-cd] [--team [--show-all]]
                             [--prefix PREFIX] [--branch BRANCH]
-  ag ls                                           List worktrees
-  ag ps [--all]                                    List active tmux sessions
+  ag ls [--all]                                    List active sessions
+  ag wt                                           List worktrees
+  ag attach <name>                                Attach to a session
   ag rm <pattern> [pattern2 ...] [--force]        Remove worktree(s)
 
 Options:
@@ -199,7 +201,7 @@ _ag_add() {
   fi
 }
 
-_ag_ls() {
+_ag_wt() {
   _ag_repo_info || return 1
 
   local prefix="${REPO_PARENT}/${REPO_NAME}-"
@@ -304,6 +306,54 @@ _ag_ps() {
       echo "No tmux sessions running."
     fi
   fi
+}
+
+_ag_attach() {
+  local name="$1"
+  if [[ -z "$name" ]]; then
+    echo "ag attach: session name required"
+    echo "Usage: ag attach <name>"
+    echo ""
+    echo "Tip: run 'ag ls' to see available sessions"
+    return 1
+  fi
+
+  # Try exact match first
+  if tmux has-session -t "$name" 2>/dev/null; then
+    tmux -CC attach-session -t "$name"
+    return 0
+  fi
+
+  # Try with repo prefix (e.g. "feature" → "myrepo-feature")
+  _ag_repo_info 2>/dev/null
+  if [[ -n "${REPO_NAME:-}" ]]; then
+    local prefixed="${REPO_NAME}-${name}"
+    if tmux has-session -t "$prefixed" 2>/dev/null; then
+      tmux -CC attach-session -t "$prefixed"
+      return 0
+    fi
+  fi
+
+  # Fuzzy match: find sessions containing the name
+  local matches
+  matches="$(tmux list-sessions -F '#{session_name}' 2>/dev/null | grep -F "$name" || true)"
+  local count
+  count="$(echo "$matches" | grep -c . 2>/dev/null || echo 0)"
+
+  if [[ "$count" -eq 1 ]]; then
+    tmux -CC attach-session -t "$matches"
+    return 0
+  elif [[ "$count" -gt 1 ]]; then
+    echo "ag attach: multiple sessions match '$name':"
+    echo "$matches" | while read -r s; do echo "  $s"; done
+    echo ""
+    echo "Be more specific, or use the full session name."
+    return 1
+  fi
+
+  echo "ag attach: no session matching '$name'"
+  echo "Run 'ag ls' to see available sessions."
+  return 1
 }
 
 _ag_get_worktree_names() {

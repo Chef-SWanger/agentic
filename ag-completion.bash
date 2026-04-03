@@ -14,7 +14,7 @@ _ag_completions() {
 
   # Complete subcommand
   if [[ ${COMP_CWORD} -eq 1 ]]; then
-    COMPREPLY=($(compgen -W "add ls ps rm help" -- "$cur"))
+    COMPREPLY=($(compgen -W "add ls wt attach rm help" -- "$cur"))
     return
   fi
 
@@ -24,10 +24,15 @@ _ag_completions() {
         COMPREPLY=($(compgen -W "--no-cd --no-tmux --team --show-all --editor --prefix --branch" -- "$cur"))
       fi
       ;;
-    ps)
+    ls)
       if [[ "$cur" == -* ]]; then
         COMPREPLY=($(compgen -W "--all" -- "$cur"))
       fi
+      ;;
+    attach)
+      local sessions
+      sessions="$(tmux list-sessions -F '#{session_name}' 2>/dev/null)"
+      COMPREPLY=($(compgen -W "$sessions" -- "$cur"))
       ;;
     rm)
       if [[ "$cur" == -* ]]; then
