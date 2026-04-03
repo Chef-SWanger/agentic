@@ -24,6 +24,11 @@ _ag_completions() {
         COMPREPLY=($(compgen -W "--no-cd --no-tmux --team --show-all --editor --prefix --branch" -- "$cur"))
       fi
       ;;
+    ps)
+      if [[ "$cur" == -* ]]; then
+        COMPREPLY=($(compgen -W "--all" -- "$cur"))
+      fi
+      ;;
     rm)
       if [[ "$cur" == -* ]]; then
         COMPREPLY=($(compgen -W "--force" -- "$cur"))

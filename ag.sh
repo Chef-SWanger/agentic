@@ -34,7 +34,7 @@ Usage:
   ag add <name> [name2 ...] [--no-tmux] [--no-cd] [--team [--show-all]]
                             [--prefix PREFIX] [--branch BRANCH]
   ag ls                                           List worktrees
-  ag ps                                           List active tmux sessions
+  ag ps [--all]                                    List active tmux sessions
   ag rm <pattern> [pattern2 ...] [--force]        Remove worktree(s)
 
 Options:
@@ -229,8 +229,20 @@ _ag_ls() {
 }
 
 _ag_ps() {
+  local show_all=false
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --all|-a) show_all=true; shift ;;
+      --*)      echo "ag ps: unknown flag '$1'"; return 1 ;;
+      *)        shift ;;
+    esac
+  done
+
   _ag_repo_info 2>/dev/null
   local repo_name="${REPO_NAME:-}"
+  if [[ "$show_all" == true ]]; then
+    repo_name=""
+  fi
   local session_data
   session_data="$(tmux list-sessions -F '#{session_name}|#{session_created}|#{session_activity}' 2>/dev/null)" || {
     echo "No tmux sessions running."
