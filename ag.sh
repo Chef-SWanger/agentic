@@ -249,12 +249,11 @@ _ag_ps() {
     return 0
   }
 
+  # Filter sessions and collect output (avoid subshell so found propagates)
   local found=false
+  local output=""
 
-  printf "  %-25s %-8s %-18s %-18s\n" "SESSION" "TYPE" "CREATED" "LAST ACTIVE"
-  printf "  %-25s %-8s %-18s %-18s\n" "-------" "----" "-------" "-----------"
-
-  echo "$session_data" | sort | while IFS='|' read -r sess created activity; do
+  while IFS='|' read -r sess created activity; do
     local show=false
     local type="solo"
 
@@ -289,12 +288,16 @@ _ag_ps() {
       created_fmt="$(date -d "@$created" '+%m/%d %H:%M' 2>/dev/null || date -r "$created" '+%m/%d %H:%M' 2>/dev/null || echo "$created")"
       activity_fmt="$(date -d "@$activity" '+%m/%d %H:%M' 2>/dev/null || date -r "$activity" '+%m/%d %H:%M' 2>/dev/null || echo "$activity")"
 
-      printf "  %-25s %-8s %-18s %-18s\n" "$sess" "$type" "$created_fmt" "$activity_fmt"
+      output+="$(printf "  %-25s %-8s %-18s %-18s\n" "$sess" "$type" "$created_fmt" "$activity_fmt")"$'\n'
       found=true
     fi
-  done
+  done < <(echo "$session_data" | sort)
 
-  if [[ "$found" == false ]]; then
+  if [[ "$found" == true ]]; then
+    printf "  %-25s %-8s %-18s %-18s\n" "SESSION" "TYPE" "CREATED" "LAST ACTIVE"
+    printf "  %-25s %-8s %-18s %-18s\n" "-------" "----" "-------" "-----------"
+    printf "%s" "$output"
+  else
     if [[ -n "$repo_name" ]]; then
       echo "No ag sessions found for ${repo_name}"
     else
