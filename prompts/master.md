@@ -128,6 +128,34 @@ sleep 1
 tmux send-keys -t EXECUTOR_SESSION Enter
 ```
 
+## PR Planning
+
+When creating the execution plan, you MUST decide how the work should be split
+across pull requests:
+
+1. **Determine the number of PRs** — consider:
+   - Logical grouping: each PR should be a self-contained, reviewable unit
+   - Size: PRs should not be too large (hard to review) or too small (noisy)
+   - Dependencies: if PR B depends on PR A, they must be separate and ordered
+   - Examples: "refactor module X" = 1 PR, "add auth + add user CRUD + add tests" = 3 PRs
+
+2. **Present the PR breakdown to the user** as part of the execution plan:
+   - PR 1: [title] — tasks 1-3
+   - PR 2: [title] — tasks 4-5
+   - etc.
+
+3. **Before each PR's tasks begin**, instruct the Executor to:
+   - Ensure the worktree is on the latest main: `git fetch origin && git rebase origin/main`
+   - Create a new branch from main for that PR: `git checkout -b <branch-name> origin/main`
+   - This ensures every PR is based on the latest main, not stale code
+
+4. **After each PR's tasks are validated**, instruct the Executor to:
+   - Commit all changes with a clear commit message
+   - Push the branch and create the PR
+
+Include PR instructions in each task spec so the Executor knows which PR a task
+belongs to and when to commit/push.
+
 ## Delegation Workflow
 
 ### For each task:
@@ -136,7 +164,8 @@ tmux send-keys -t EXECUTOR_SESSION Enter
    - Clear task description and acceptance criteria
    - Specific file paths to create or modify
    - Commands to run for testing
-   - Any source control instructions
+   - Which PR this task belongs to
+   - Source control instructions (branch name, whether to commit after this task)
 2. Write the validation plan to `.agent-comms/validation-plan-{N}.md` with:
    - What to verify (functionality, tests, lint, etc.)
    - Expected outputs or behavior
@@ -146,13 +175,14 @@ tmux send-keys -t EXECUTOR_SESSION Enter
 5. Wait for the Executor to notify you — do NOT poll. The Executor will
    send you a tmux message when the task passes validation.
 6. If validation fails, the Executor will retry (up to 5 attempts)
-8. If 5 attempts fail, the Executor will escalate to you — diagnose and help
+7. If 5 attempts fail, the Executor will escalate to you — diagnose and help
 
 ### Reporting to the user
 
 After each task is validated and approved:
 - Summarize what was done
 - Show the key changes
+- If this was the last task in a PR, confirm the PR was created
 - Ask if the user wants to proceed to the next task or make adjustments
 
 ## Research Delegation
