@@ -101,7 +101,7 @@ if [[ "$TEAM_MODE" == false ]]; then
 
     sleep 1
 
-    tmux send-keys -t "$P0" 'claude --dangerously-skip-permissions' C-m
+    tmux send-keys -t "$P0" 'claude --dangerously-enable-internet-mode --dangerously-skip-permissions' C-m
     tmux send-keys -t "$P1" "nvim" C-m
     tmux select-pane -t "$P2"
   else
@@ -110,7 +110,7 @@ if [[ "$TEAM_MODE" == false ]]; then
 
     sleep 1
 
-    tmux send-keys -t "$P0" 'claude --dangerously-skip-permissions' C-m
+    tmux send-keys -t "$P0" 'claude --dangerously-enable-internet-mode --dangerously-skip-permissions' C-m
     tmux select-pane -t "$P1"
   fi
 
@@ -241,7 +241,7 @@ echo "+------------------------+"
 echo "|  MASTER                |"
 echo "+------------------------+"
 echo ""
-exec claude --dangerously-skip-permissions \\
+exec claude --dangerously-enable-internet-mode --dangerously-skip-permissions \\
   --settings '${AGENTIC_DIR}/profiles/master.json' \\
   --append-system-prompt "\$(cat '${MASTER_PROMPT_FILE}')"
 LAUNCHER_EOF
